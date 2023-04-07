@@ -1,16 +1,18 @@
 <!doctype html>
 <html lang="zh-CN">
 <head>
-	<SCRIPT language=javascript> 
+<SCRIPT language=javascript> 
 function jannick() { return false } 
 function jannick1() { if (event.button==2) {return false }} 
 function CtrlKeyDown(){ if (event.ctrlKey) {return false }} 
 document.onkeydown=CtrlKeyDown; document.onselectstart=jannick; document.onmousedown=jannick1; 
 </SCRIPT>     
+
 <script language="JavaScript">    
 document.oncontextmenu=new Function("event.returnValue=false;");    
 document.onselectstart=new Function("event.returnValue=false;");    
-</script> 
+</script>
+    
      <script type="text/javascript">
         window.onload = function(){
             //屏蔽键盘事件
