@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/env bash
 
 set -e  # 在发生错误时立即退出脚本
 
