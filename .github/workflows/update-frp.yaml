@@ -20,11 +20,10 @@ jobs:
         run: |
           # 获取 FRP 最新版本号
           FRP_VERSION=$(curl -s https://api.github.com/repos/fatedier/frp/releases/latest | jq -r '.tag_name')
-          # 删除前缀 "v"
-          FRP_VERSION=${FRP_VERSION#v}
-          echo "::set-output name=frp_version::$FRP_VERSION"
+          echo "::set-output name=frp_version::${FRP_VERSION}"
 
-      - name: Download and Store FRP File
+      - name: Download and Check FRP File
+        id: download_and_check
         run: |
           # 获取之前保存的版本号
           FRP_VERSION=${{ steps.get_frp_version.outputs.frp_version }}
@@ -32,12 +31,22 @@ jobs:
           # 构建下载链接
           DOWNLOAD_URL="https://github.com/fatedier/frp/releases/download/v$FRP_VERSION/frp_${FRP_VERSION}_linux_amd64.tar.gz"
 
-          # 下载并保存文件
+          # 下载文件并计算哈希值
           wget "$DOWNLOAD_URL" -O frp.tar.gz
-          mkdir -p download
-          mv frp.tar.gz download/
+          NEW_HASH=$(sha256sum frp.tar.gz | awk '{print $1}')
+          OLD_HASH=$(sha256sum download/frp.tar.gz | awk '{print $1}')
+
+          # 比较哈希值
+          if [ "$NEW_HASH" != "$OLD_HASH" ]; then
+            mv frp.tar.gz download/
+            echo "File has changed. Updating."
+          else
+            echo "File has not changed. Skipping."
+            rm frp.tar.gz
+          fi
 
       - name: Commit and Push Changes
+        if: steps.download_and_check.outputs.exit-code == 0
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
