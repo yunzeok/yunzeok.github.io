@@ -37,6 +37,7 @@ if ! command -v systemctl &> /dev/null; then
 fi
 echo "本脚本推荐本地安装，请自行前往https://github.com/fatedier/frp/releases/中下载linux版本文件，将其改名为frp.tar.gz并存放在用户文件夹 $HOME 下"
 echo "本脚本提供网络安装，但是安装的版本为v0.51.3"
+echo "如已经安装过，请提前做好配置文件的备份"
 # 获取用户选择是安装frpc还是frps
 echo "请选择要安装的组件："
 echo "1. frpc"
