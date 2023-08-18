@@ -65,7 +65,7 @@ CONFIG_DIR="/etc/$COMPONENT"
 if [ ! -f "$FRP_PACKAGE_PATH" ]; then
     echo "frp.tar.gz 不存在，请选择操作："
     echo "1. 手动下载并放置 frp.tar.gz"
-    echo "2. 自动从 https://hub.yunzeofficial.cn/download/frp.tar.gz 下载"
+    echo "2. 自动从网络下载"
     read -p "输入数字 (1/2): " download_choice
 
     case $download_choice in
@@ -74,7 +74,7 @@ if [ ! -f "$FRP_PACKAGE_PATH" ]; then
             exit 1
             ;;
         2)
-            echo "正在从 https://hub.yunzeofficial.cn/download/frp.tar.gz 下载..."
+            echo "正在从网络下载..."
             curl -o "$FRP_PACKAGE_PATH" "https://hub.yunzeofficial.cn/download/frp.tar.gz"
             ;;
         *)
