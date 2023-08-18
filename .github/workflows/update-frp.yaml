@@ -21,7 +21,6 @@ jobs:
           # 获取 FRP 最新版本号
           FRP_VERSION=$(curl -s https://api.github.com/repos/fatedier/frp/releases/latest | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
           echo "::set-output name=frp_version::$FRP_VERSION"
-
       - name: Download and Store FRP File
         run: |
           # 获取之前保存的版本号
