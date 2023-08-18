@@ -20,10 +20,11 @@ jobs:
         run: |
           # 获取 FRP 最新版本号
           FRP_VERSION=$(curl -s https://api.github.com/repos/fatedier/frp/releases/latest | jq -r '.tag_name')
-          echo "::set-output name=frp_version::${FRP_VERSION}"
+          # 删除前缀 "v"
+          FRP_VERSION=${FRP_VERSION#v}
+          echo "::set-output name=frp_version::$FRP_VERSION"
 
-      - name: Download and Check FRP File
-        id: download_and_check
+      - name: Download and Store FRP File
         run: |
           # 获取之前保存的版本号
           FRP_VERSION=${{ steps.get_frp_version.outputs.frp_version }}
