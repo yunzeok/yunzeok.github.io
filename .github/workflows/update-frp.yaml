@@ -1,0 +1,44 @@
+name: Update and Store FRP Latest Version
+
+on:
+  push:
+    branches:
+      - main
+  schedule:
+    - cron: '0 0 * * *'  # 每天的午夜（UTC时间）触发
+
+jobs:
+  update_and_store_frp:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+
+      - name: Get FRP Latest Version
+        id: get_frp_version
+        run: |
+          # 获取 FRP 最新版本号
+          FRP_VERSION=$(curl -s https://api.github.com/repos/fatedier/frp/releases/latest | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+          echo "::set-output name=frp_version::$FRP_VERSION"
+
+      - name: Download and Store FRP File
+        run: |
+          # 获取之前保存的版本号
+          FRP_VERSION=${{ steps.get_frp_version.outputs.frp_version }}
+
+          # 构建下载链接
+          DOWNLOAD_URL="https://github.com/fatedier/frp/releases/download/$FRP_VERSION/frp_${FRP_VERSION}_linux_amd64.tar.gz"
+
+          # 下载并保存文件
+          wget "$DOWNLOAD_URL" -O frp.tar.gz
+          mkdir -p download
+          mv frp.tar.gz download/
+
+      - name: Commit and Push Changes
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add .
+          git commit -m "Update FRP version"
+          git push
