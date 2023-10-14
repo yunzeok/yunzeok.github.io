@@ -5,7 +5,7 @@ on:
     branches:
       - main
   schedule:
-    - cron: '0 0 * * *'  # 每天的午夜（UTC时间）触发
+    - cron: '0 0 1 * *'  # 每月的1号午夜（UTC时间）触发
 
 jobs:
   update_and_store_frp:
