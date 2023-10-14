@@ -77,7 +77,7 @@ if [ ! -f "$FRP_PACKAGE_PATH" ]; then
         2)
             echo "正在从网络下载..."
             echo "本脚本所提供的网络安装（定时自动拉取最新版），安装版本可能落后于github版本"
-            curl -o "$FRP_PACKAGE_PATH" "https://hub.yunzeofficial.cn/download/frp.tar.gz"
+            curl -o "$FRP_PACKAGE_PATH" "https://yunzeo.github.io/download/frp.tar.gz"
             ;;
         *)
             echo "无效的选择"
