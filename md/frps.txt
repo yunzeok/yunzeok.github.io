@@ -1,0 +1,168 @@
+# [common] is integral section
+[common] is integral section
+# IPv6 的字面地址或主机名必须用方括号括起来。
+# 例如"[::1]:80"、"[ipv6-host]:http "或"[ipv6-host%zone]:80"。
+# 对于单个 "bind_addr "字段，无需方括号，如 "bind_addr = ::".
+bind_addr = 0.0.0.0
+bind_port = 7000
+
+# 用于 kcp 协议的 udp 端口，可与 "bind_port "相同。
+# 如果未设置，则 frps 将禁用 kcp。
+kcp_bind_port = 7000
+
+# 用于 quic 协议的 udp 端口。
+# 如果未设置，frps 将禁用 quic。
+# quic_bind_port = 7002
+# quic 协议选项
+# quic_keepalive_period = 10
+# quic_max_idle_timeout = 30
+# quic_max_incoming_streams = 100000
+
+# 指定代理监听的地址，默认值与 bind_addr 相同
+# proxy_bind_addr = 127.0.0.1
+
+# 如果要支持虚拟主机，必须设置用于监听的 http 端口（可选）
+# 注意：http 端口和 https 端口可以与 bind_port 相同
+vhost_http_port = 80
+vhost_https_port = 443
+
+# vhost http 服务器的响应头超时（秒），默认为 60s
+# vhost_http_timeout = 60
+
+# tcpmux_httpconnect_port 指定服务器监听 TCP
+# HTTP CONNECT 请求的端口。如果值为 0，服务器将不会在一个端口上多路复用 TCP
+# 请求。如果不是--它将在此值上监听 # HTTP CONNECT 请求。
+# HTTP CONNECT 请求。默认情况下，该值为 0。
+# tcpmux_httpconnect_port = 1337
+
+# 如果 tcpmux_passthrough 为 true，则 frps 不会对流量进行任何更新。
+# tcpmux_passthrough = false
+
+# 设置 dashboard_addr 和 dashboard_port，以查看 frps 的仪表盘
+# dashboard_addr 的默认值与 bind_addr 相同
+# 只有设置了 dashboard_port，仪表盘才可用
+dashboard_addr = 0.0.0.0
+dashboard_port = 7500
+
+# 用于基本认证保护的 dashboard 用户和密码
+dashboard_user = admin
+dashboard_pwd = admin
+
+# 面板 TLS 模式
+dashboard_tls_mode = false
+# dashboard_tls_cert_file = server.crt
+# dashboard_tls_key_file = server.key
+
+# enable_prometheus 将在 /metrics api 中的 {dashboard_addr}:{dashboard_port} 上导出 prometheus 指标。
+enable_prometheus = true
+
+# 仪表板资产目录（仅用于调试模式）
+# assets_dir = ./static
+
+# 控制台或真实日志文件路径，如 ./frps.log
+log_file = ./frps.log
+
+# 跟踪、调试、信息、警告、错误
+log_level = info
+
+log_max_days = 3
+
+# 当 log_file 为控制台时禁用日志颜色，默认为 false
+disable_log_color = false
+
+# DetailedErrorsToClient 定义是否向 frpc 发送特定错误（含调试信息）。默认情况下，该值为 true。
+detailed_errors_too_client = true
+
+# 身份验证方法（authentication_method）指定使用何种身份验证方法通过 frpc 与 frps 进行身份验证。
+# 如果指定了 "token"（令牌）--令牌将被读入登录信息。
+# 如果指定了 "oidc"--将使用 OIDC 设置签发 OIDC（开放 ID 连接）令牌。默认情况下，该值为 "token"。
+身份验证方法 = 令牌
+
+# authenticate_heartbeats 指定是否在发送给 frps 的心跳中包含身份验证令牌。默认情况下，此值为 "false"。
+authenticate_heartbeats = false
+
+# AuthenticateNewWorkConns 指定是否在发送给 frps 的新工作连接中包含身份验证标记。默认情况下，此值为 false。
+authenticate_new_work_conns = false
+
+# 验证令牌
+令牌 = 12345678
+
+# oidc_issuer 指定验证 OIDC 令牌的发行方。
+# 默认情况下，此值为""。
+oidc_issuer =
+
+# oidc_audience 指定验证 OIDC 令牌时应包含的受众。
+# 默认情况下，此值为""。
+oidc_audience =
+
+# oidc_skip_expiry_check 指定是否跳过 OIDC 令牌是否过期的检查。
+# 默认情况下，此值为 false。
+oidc_skip_expiry_check = false
+
+# oidc_skip_issuer_check 指定是否跳过检查 OIDC 令牌的发行者声明是否与 OidcIssuer 中指定的发行者一致。
+# 默认情况下，该值为 false。
+oidc_skip_issuer_check = false
+
+# 心跳配置，不建议修改默认值
+# 心跳超时的默认值是 90。设置负值可禁用它。
+# heartbeat_timeout = 90
+
+# 配置 user_conn_timeout，不建议修改默认值
+# user_conn_timeout 的默认值是 10
+# user_conn_timeout = 10
+
+# 只允许 frpc 绑定您列出的端口，如果什么都不设置，就不会有任何限制
+allow_ports = 2000-3000,3001,3003,4000-50000
+
+# 如果每个代理中的 pool_count 超过了最大值，就会更改为 max_pool_count
+max_pool_count = 5
+
+# 每个客户端可使用的最大端口数，默认值为 0 表示无限制
+max_ports_per_client = 0
+
+# tls_only 指定是否只接受 TLS 加密连接。默认值为 false。
+tls_only = false
+
+# tls_cert_file = server.crt
+# tls_key_file = server.key
+# tls_trusted_ca_file = ca.crt
+
+# 如果 subdomain_host 不为空，则可在 frpc 的配置文件中设置 http 或 https 类型时的子域
+# 当子域为 test 时，路由使用的主机为 test.frps.com
+子域主机 = frps.com
+
+# 如果使用 tcp 流多路复用，默认为 true
+# tcp_mux = true
+
+# 指定 tcp 多路复用的保持生存时间间隔。
+# 仅在 tcp_mux 为 true 时有效。
+# tcp_mux_keepalive_interval = 60
+
+# tcp_keepalive 指定 frpc 和 frps 之间活动网络连接的 keep-alive 探测间隔。
+# 如果为负数，则禁用 keep-alive 探测。
+# tcp_keepalive = 7200
+
+# 为 HTTP 请求自定义 404 页面
+# custom_404_page = /path/to/404.html
+
+# 指定 udp 数据包大小，单位为字节。如果未设置，默认值为 1500。
+# 该参数在客户端和服务器端应相同。
+# 它会影响 udp 和 sudp 代理。
+udp_packet_size = 1500
+
+# 在仪表板监听器中启用 golang pprof 处理程序。
+# 必须先设置仪表板端口
+pprof_enable = false
+
+# 保留 NAT 打孔策略数据的时间。
+nat_hole_analysis_data_reserve_hours = 168
+
+[plugin.user-manager］
+addr = 127.0.0.1:9000
+path = /handler
+操作 = 登录
+
+[端口管理器］
+addr = 127.0.0.1:9001
+路径 = /handler
+ops = NewProxy

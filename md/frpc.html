@@ -1,0 +1,60 @@
+<!--
+ * @Author: yunze yunzhongmengze@gmail.com
+ * @Date: 2023-10-15 14:42:34
+ * @LastEditors: yunze yunzhongmengze@gmail.com
+ * @LastEditTime: 2023-10-15 14:49:14
+ * @FilePath: \yunzeo.github.io\md\frpc.html
+ * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>frpc配置</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        @font-face {
+            font-family: 'HarmonyOS_Sans_SC_Medium';
+            src: url('../fonts/HarmonyOS_Sans_SC_Medium.subset.woff2') format('woff2');
+            font-weight: normal;
+            font-style: normal;
+        }
+    </style>
+</head>
+<body>
+
+<h2>frpc 配置：</h2>
+
+<pre id="txtContent"></pre>
+
+<script>
+    // 使用 JavaScript 读取文件内容并显示在页面上
+    const file_path = "./frpc.txt"; // 文件路径，注意根据实际情况修改
+    const txtContent = document.getElementById("txtContent");
+
+    fetch(file_path)
+        .then(response => response.text())
+        .then(content => {
+            txtContent.textContent = content;
+        })
+        .catch(error => {
+            txtContent.textContent = "文件不存在或无法读取。";
+            console.error(error);
+        });
+</script>
+
+</body>
+</html>
