@@ -1,3 +1,4 @@
+#v0.50.0
 # [common] is integral section
 [common] is integral section
 # IPv6 的字面地址或主机名必须用方括号括起来。
