@@ -86,7 +86,7 @@ authenticate_heartbeats = false
 authenticate_new_work_conns = false
 
 # 验证令牌
-令牌 = 12345678
+token = 12345678
 
 # oidc_issuer 指定验证 OIDC 令牌的发行方。
 # 默认情况下，此值为""。
@@ -161,9 +161,9 @@ nat_hole_analysis_data_reserve_hours = 168
 [plugin.user-manager］
 addr = 127.0.0.1:9000
 path = /handler
-操作 = 登录
+ops = Login
 
-[端口管理器］
+[plugin.port-manager]
 addr = 127.0.0.1:9001
-路径 = /handler
+path = /handler
 ops = NewProxy
