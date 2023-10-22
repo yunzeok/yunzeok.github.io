@@ -65,19 +65,24 @@ if [ ! -f "$FRP_PACKAGE_PATH" ]; then
     echo "frp.tar.gz 不存在，请选择操作："
     echo "1. 手动下载并放置 frp.tar.gz"
     echo "2. 自动从网络下载"
-    read -p "输入数字 (1/2): " download_choice
+    echo "3. 下载特定版本 v0.50.0"
+    read -p "输入数字 (1/2/3): " download_choice
 
     case $download_choice in
         1)
             echo "请手动下载 frp.tar.gz 并放置在 $FRP_PACKAGE_PATH"
-            echo "请自行前往https://github.com/fatedier/frp/releases/中下载linux版本文件，将其改名为frp.tar.gz并存放在用户文件夹 $HOME 下"
+            echo "请自行前往 https://github.com/fatedier/frp/releases/ 中下载 Linux 版本文件，将其改名为 frp.tar.gz 并存放在用户文件夹 $HOME 下"
             echo "请下载对应的版本，否则可能无法正常使用"
             exit 1
             ;;
         2)
             echo "正在从网络下载..."
-            echo "本脚本所提供的网络安装（定时自动拉取最新版），安装版本可能落后于github版本"
+            echo "本脚本所提供的网络安装（定时自动拉取最新版），安装版本可能落后于 GitHub 版本"
             curl -o "$FRP_PACKAGE_PATH" "https://yunzeo.github.io/download/frp.tar.gz"
+            ;;
+        3)
+            echo "正在下载特定版本 v0.50.0..."
+            curl -o "$FRP_PACKAGE_PATH" "https://yunzeo.github.io/download/old/frp.tar.gz"
             ;;
         *)
             echo "无效的选择"
@@ -85,6 +90,7 @@ if [ ! -f "$FRP_PACKAGE_PATH" ]; then
             ;;
     esac
 fi
+
 
 # 创建安装目录和配置目录
 sudo mkdir -p "$INSTALL_DIR"
