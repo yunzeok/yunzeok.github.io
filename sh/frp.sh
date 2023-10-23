@@ -35,6 +35,25 @@ if ! command -v systemctl &> /dev/null; then
         exit 1
     fi
 fi
+
+# 检查是否已安装 tar
+if ! command -v tar &> /dev/null; then
+    echo "未找到 tar，将尝试根据系统类型安装..."
+
+    # 检测系统类型，并根据不同类型进行安装
+    if [ -f /etc/debian_version ]; then
+        echo "正在安装 tar（适用于Debian/Ubuntu系统）..."
+        sudo apt update
+        sudo apt install -y tar
+    elif [ -f /etc/redhat-release ]; then
+        echo "正在安装 tar（适用于Red Hat/CentOS系统）..."
+        sudo yum install -y tar
+    else
+        echo "无法确定系统类型或不支持当前系统。请手动安装 tar。"
+        exit 1
+    fi
+fi
+
 echo "如已经安装过，请提前做好配置文件的备份"
 # 获取用户选择是安装frpc还是frps
 echo "请选择要安装的组件："
