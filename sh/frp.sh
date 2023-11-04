@@ -122,6 +122,22 @@ tar -xzvf "$FRP_PACKAGE_PATH" --strip-components=1 -C "$INSTALL_DIR"
 sudo touch "$CONFIG_DIR/${COMPONENT}.ini"
 # 这里可以根据需要添加默认配置内容
 
+# 检查 tar 解压是否成功
+if [ -f "$INSTALL_DIR/$COMPONENT" ] && [ -f "$CONFIG_DIR/${COMPONENT}.ini" ]; then
+    echo "文件成功解压并移动到安装目录。"
+
+    # 检查是否成功解压出frps和frpc文件
+    if [ -f "$INSTALL_DIR/frps" ] && [ -f "$INSTALL_DIR/frpc" ]; then
+        echo "成功解压出 $COMPONENT 。"
+    else
+        echo "解压过程中出现问题，$COMPONENT 文件未成功解压。请检查并重新运行脚本。"
+        exit 1
+    fi
+else
+    echo "解压过程中出现问题，文件未成功解压。请检查并重新运行脚本。"
+    exit 1
+fi
+
 # 创建systemd服务单元文件
 sudo tee "/etc/systemd/system/${COMPONENT}.service" > /dev/null <<EOL
 [Unit]
