@@ -21,7 +21,7 @@ sed -i '/iface '$network_interface' inet dhcp/,/^$/ {
 
 # 修改apt源为阿里云源（适用于 Debian 12 Bookworm 版本）
 cp /etc/apt/sources.list /etc/apt/sources.list.bak
-cat <<EOL | sudo tee /etc/apt/sources.list > /dev/null
+cat <<EOL |  tee /etc/apt/sources.list > /dev/null
 deb https://mirrors.aliyun.com/debian/ bookworm main non-free non-free-firmware contrib
 deb-src https://mirrors.aliyun.com/debian/ bookworm main non-free non-free-firmware contrib
 deb https://mirrors.aliyun.com/debian-security/ bookworm-security main
