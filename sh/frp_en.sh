@@ -85,7 +85,7 @@ if [ ! -f "$FRP_PACKAGE_PATH" ]; then
     echo "frp.tar.gz not found. Choose an action:"
     echo "1. Manually download and place frp.tar.gz"
     echo "2. Automatically download from the internet"
-    echo "3. Download specific version v0.50.0"
+    echo "3. Download specific version v0.50.0 (recommended))"
     read -p "Enter the number (1/2/3): " download_choice
 
     case $download_choice in
