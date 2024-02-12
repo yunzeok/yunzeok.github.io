@@ -85,7 +85,8 @@ if [ ! -f "$FRP_PACKAGE_PATH" ]; then
     echo "1. 手动下载并放置 frp.tar.gz"
     echo "2. 自动从网络下载"
     echo "3. 下载特定版本 v0.50.0 (推荐)"
-    read -p "输入数字 (1/2/3): " download_choice
+    echo "4. 下载特定ARM版本 v0.50.0 "
+    read -p "输入数字 (1/2/3/4): " download_choice
 
     case $download_choice in
         1)
@@ -102,6 +103,10 @@ if [ ! -f "$FRP_PACKAGE_PATH" ]; then
         3)
             echo "正在下载特定版本 v0.50.0..."
             curl -o "$FRP_PACKAGE_PATH" "https://yunzeo.github.io/download/old/frp.tar.gz"
+            ;;
+        4)
+            echo "正在下载特定ARM版本 v0.50.0..."
+            curl -o "$FRP_PACKAGE_PATH" "https://yunzeo.github.io/download/old/arm/frp.tar.gz"
             ;;
         *)
             echo "无效的选择"
