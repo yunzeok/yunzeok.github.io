@@ -86,7 +86,8 @@ if [ ! -f "$FRP_PACKAGE_PATH" ]; then
     echo "1. Manually download and place frp.tar.gz"
     echo "2. Automatically download from the internet"
     echo "3. Download specific version v0.50.0 (recommended))"
-    read -p "Enter the number (1/2/3): " download_choice
+    echo "4. Download specific version v0.50.0 (ARM64))"
+    read -p "Enter the number (1/2/3/4): " download_choice
 
     case $download_choice in
         1)
@@ -103,6 +104,10 @@ if [ ! -f "$FRP_PACKAGE_PATH" ]; then
         3)
             echo "Downloading specific version v0.50.0..."
             curl -o "$FRP_PACKAGE_PATH" "https://yunzeo.github.io/download/old/frp.tar.gz"
+            ;;
+        4)
+            echo "Downloading specific version ARM64 v0.50.0..."
+            curl -o "$FRP_PACKAGE_PATH" "https://yunzeo.github.io/download/old/arm/frp.tar.gz"
             ;;
         *)
             echo "Invalid choice"
