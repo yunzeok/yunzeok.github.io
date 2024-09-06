@@ -3,10 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="文件下载和文档查看页面">
+    <meta name="keywords" content="下载, 文件, 文档, frp, pgsql">
     <link rel="shortcut icon" href="./favicon.ico" type="image/x-icon">
-   <script defer src="https://um.yunzeo.com/uakKAB4hHfA2uZ9Rj.js" data-website-id="737c2cea-bd53-46da-9c77-93b38faca86b"></script>
+    <script defer src="https://um.yunzeo.com/uakKAB4hHfA2uZ9Rj.js" data-website-id="737c2cea-bd53-46da-9c77-93b38faca86b"></script>
     <script defer data-domain="yunzeo.github.io" src="https://dev.yunzeo.com//sEdFVjLwuc6z6Tke.js"></script>
-    
+
     <title>Download</title>
     <style>
         body {
@@ -18,16 +20,13 @@
         }
         .content {
             flex: 1;
-            padding-bottom: 50px; 
+            padding: 20px 20px 50px 20px; /* 上右下左 */
         }
         .item {
             margin-bottom: 5px; 
+            padding: 10px 0;
         }
-        .download-link {
-            display: inline-block;
-            margin-right: 10px; 
-        }
-        .html-link {
+        .download-link, .html-link {
             display: inline-block;
             margin-right: 10px; 
         }
@@ -38,6 +37,12 @@
             position: relative;
             bottom: 0;
         }
+        @media (max-width: 600px) {
+            .item {
+                display: block;
+                margin-bottom: 10px;
+            }
+        }
     </style>
 </head>
 
@@ -45,7 +50,7 @@
     <div class="content">
         <h1>Index of /download/</h1><hr>
         <div class="item">
-            <span class="download-link"><a href="./download/frp.tar.gz">frp.tar.gz</a></span>
+            <span class="download-link"><a href="./download/old/frp.tar.gz">old-frp.tar.gz</a></span>
             <span class="date">2023/8/18</span>
         </div>
         <div class="item">
@@ -61,10 +66,56 @@
             <span class="html-link"><a href="./md/frpc.html" target="_blank">frpc</a></span>
             <span class="date">2023/10/15</span>
         </div>
+        <h1>Links of sh</h1><hr>
+        <div class="item">
+            <span class="html-link"><a href="./sh/frp.sh" target="_blank">frp脚本</a></span>
+            <span class="links">
+                <code>bash &lt;(curl -Ls https://yunzeo.github.io/sh/frp.sh)</code>
+                <button onclick="copyToClipboard('bash <(curl -Ls https://yunzeo.github.io/sh/frp.sh)')">复制</button>
+            </span>
+        </div>
+        <div class="item">
+            <span class="html-link"><a href="./sh/pgsql_analyzer.sh" target="_blank">pgsql_analyzer</a></span>
+            <span class="links">
+                <code>bash &lt;(curl -Ls https://yunzeo.github.io//sh/pgsql_analyzer.sh)</code>
+                <button onclick="copyToClipboard('bash <(curl -Ls https://yunzeo.github.io//sh/pgsql_analyzer.sh)')">复制</button>
+            </span>
+        </div>
+        
+        <div id="copy-alert" style="display: none; position: fixed; bottom: 20px; right: 20px; background-color: #4CAF50; color: white; padding: 10px; border-radius: 5px; z-index: 1000;">
+            命令已复制到剪贴板
+        </div>
+        
+        <script>
+            function copyToClipboard(text) {
+                const textarea = document.createElement("textarea");
+                textarea.value = text;
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand("copy");
+                document.body.removeChild(textarea);
+                showCopyAlert();
+            }
+        
+            function showCopyAlert() {
+                const alertBox = document.getElementById("copy-alert");
+                alertBox.style.display = "block";
+                setTimeout(() => {
+                    alertBox.style.opacity = "1";
+                    setTimeout(() => {
+                        alertBox.style.opacity = "0";
+                        setTimeout(() => {
+                            alertBox.style.display = "none";
+                        }, 500); // 等待淡出效果结束后隐藏
+                    }, 2000); // 提示显示2秒后开始淡出
+                }, 100);
+            }
+        </script>
+        
     </div>
 
     <footer>
-
+        <p>&copy; 2024 yunzeo.github.io. All rights reserved.</p>
     </footer>
 </body>
 
