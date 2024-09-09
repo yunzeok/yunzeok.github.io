@@ -9,14 +9,14 @@ if [ ! -d ~/.ssh ]; then
     chmod 700 ~/.ssh
 fi
 
-# 将公钥添加到 authorized_keys 文件中
+# 将公钥添加到 authorized_keys 文件中，若已存在则替换
 if grep -q "$PUBLIC_KEY" ~/.ssh/authorized_keys 2>/dev/null; then
-    echo "公钥已经存在于 authorized_keys 文件中"
-else
-    echo "$PUBLIC_KEY" >> ~/.ssh/authorized_keys
-    chmod 600 ~/.ssh/authorized_keys
-    echo "公钥已添加到 authorized_keys 文件中"
+    sed -i "/$PUBLIC_KEY/d" ~/.ssh/authorized_keys
+    echo "公钥已存在，将替换旧的公钥。"
 fi
+echo "$PUBLIC_KEY" >> ~/.ssh/authorized_keys
+chmod 600 ~/.ssh/authorized_keys
+echo "公钥已添加到 authorized_keys 文件中"
 
 # 配置 SSH 以允许公钥登录
 SSH_CONFIG_FILE="/etc/ssh/sshd_config"
