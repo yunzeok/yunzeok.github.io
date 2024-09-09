@@ -27,6 +27,9 @@ if [ ! -f "$SSH_CONFIG_FILE.bak" ]; then
     echo "已备份 $SSH_CONFIG_FILE 到 $SSH_CONFIG_FILE.bak"
 fi
 
+# 取消注释 AuthorizedKeysFile 行
+sed -i 's/#AuthorizedKeysFile .*/AuthorizedKeysFile .ssh\/authorized_keys/' $SSH_CONFIG_FILE
+
 # 确保 PermitRootLogin 为 yes
 #sed -i 's/#*PermitRootLogin no/PermitRootLogin yes/' $SSH_CONFIG_FILE
 
