@@ -40,4 +40,4 @@ services:
 EOF
 
 # 启动 Docker 服务
-docker-compose -f /root/tailscale/docker-compose.yml up -d
+docker-compose -f /root/tailscale/docker compose.yml up -d
