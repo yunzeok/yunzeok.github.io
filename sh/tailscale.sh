@@ -1,5 +1,22 @@
 #!/bin/bash
 
+# 检测是否安装了 Docker
+if ! command -v docker &> /dev/null; then
+    echo "未检测到 Docker，请先安装 Docker 后再运行此脚本。"
+    exit 1
+fi
+
+# 检测是否使用 docker compose 还是 docker-compose
+DOCKER_COMPOSE_CMD=""
+if command -v docker-compose &> /dev/null; then
+    DOCKER_COMPOSE_CMD="docker-compose"
+elif docker compose version &> /dev/null; then
+    DOCKER_COMPOSE_CMD="docker compose"
+else
+    echo "未检测到 docker compose 或 docker-compose，请先安装后再运行此脚本。"
+    exit 1
+fi
+
 # 创建 Tailscale 文件夹
 mkdir -p /root/tailscale
 
@@ -40,4 +57,4 @@ services:
 EOF
 
 # 启动 Docker 服务
-docker compose -f /root/tailscale/docker compose.yml up -d
+$DOCKER_COMPOSE_CMD -f /root/tailscale/docker-compose.yml up -d
