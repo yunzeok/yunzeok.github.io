@@ -127,10 +127,39 @@
         </script>
         
     </div>
-
-    <footer>
-        <p>&copy; 2024 yunzeo. All rights reserved.</p>
-    </footer>
 </body>
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        const currentDomain = window.location.origin;
 
+        // 替换 a 标签中的链接
+        document.querySelectorAll("a").forEach(link => {
+            const url = new URL(link.href, window.location.origin);
+            link.href = url.href.replace(url.origin, currentDomain);
+        });
+
+        // 替换 <code> 标签中的脚本链接
+        document.querySelectorAll("code").forEach(code => {
+            const scriptRegex = /https?:\/\/[^\s]+/g;
+            code.innerHTML = code.innerHTML.replace(scriptRegex, match =>
+                match.replace(new URL(match).origin, currentDomain)
+            );
+        });
+
+        // 替换按钮点击事件中的脚本链接
+        document.querySelectorAll("button").forEach(button => {
+            const onClickAttr = button.getAttribute("onclick");
+            if (onClickAttr) {
+                const updatedAttr = onClickAttr.replace(
+                    /https?:\/\/[^\s]+/g,
+                    match => match.replace(new URL(match).origin, currentDomain)
+                );
+                button.setAttribute("onclick", updatedAttr);
+            }
+        });
+    });
+</script>
+<footer>
+        <p>&copy; 2024 yunzeo. All rights reserved.</p>
+</footer>
 </html>
