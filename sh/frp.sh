@@ -26,6 +26,17 @@ install_dependency() {
     fi
 }
 
+# 下载文件并校验
+download_file() {
+    local url=$1
+    local output=$2
+    info "正在下载：$url"
+    curl -o "$output" "$url"
+    if [ $? -ne 0 ] || [ ! -f "$output" ]; then
+        exit_with_message "下载失败，请检查网络连接或URL是否正确。"
+    fi
+}
+
 # 生成随机值函数
 generate_random_token() {
     openssl rand -hex 16  # 32位随机字符串
@@ -52,7 +63,7 @@ generate_config() {
         dashboard_addr="0.0.0.0"
         dashboard_port="7500"
         dashboard_pwd=$(generate_random_password)
-        vhost_https_port="8443"
+        vhost_https_port="443"
     else
         # 手动设置
         read -p "请输入绑定地址 (默认: 0.0.0.0): " bind_addr
@@ -76,8 +87,8 @@ generate_config() {
         read -p "请输入 Dashboard 密码 (默认: 随机生成10位字符): " dashboard_pwd
         dashboard_pwd=${dashboard_pwd:-$(generate_random_password)}
 
-        read -p "请输入 HTTPS 监听端口 (默认: 8443): " vhost_https_port
-        vhost_https_port=${vhost_https_port:-"8443"}
+        read -p "请输入 HTTPS 监听端口 (默认: 443): " vhost_https_port
+        vhost_https_port=${vhost_https_port:-"443"}
     fi
 
     # 写入配置文件
