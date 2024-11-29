@@ -1,149 +1,148 @@
 #!/bin/bash
 
-# 检查是否已安装 curl
-if ! command -v curl &> /dev/null; then
-    echo "未找到 curl，将尝试根据系统类型安装..."
-    
-    # 检测系统类型，并根据不同类型进行安装
-    if [ -f /etc/debian_version ]; then
-        echo "正在安装 curl（适用于Debian/Ubuntu系统）..."
-        sudo apt update
-        sudo apt install -y curl
-    elif [ -f /etc/redhat-release ]; then
-        echo "正在安装 curl（适用于Red Hat/CentOS系统）..."
-        sudo yum install -y curl
-    else
-        echo "无法确定系统类型或不支持当前系统。请手动安装 curl。"
-        exit 1
+# 输出带颜色的提示信息
+info() { echo -e "\033[1;32m[INFO]\033[0m $1"; }
+warn() { echo -e "\033[1;33m[WARN]\033[0m $1"; }
+error() { echo -e "\033[1;31m[ERROR]\033[0m $1"; }
+exit_with_message() {
+    local message=$1
+    local code=${2:-1}
+    echo -e "\033[1;31m$message\033[0m"
+    exit $code
+}
+
+# 检查依赖并安装
+install_dependency() {
+    local package=$1
+    if ! command -v $package &> /dev/null; then
+        info "未找到 $package，将尝试安装..."
+        if [ -f /etc/debian_version ]; then
+            sudo apt update && sudo apt install -y $package || exit_with_message "$package 安装失败！"
+        elif [ -f /etc/redhat-release ]; then
+            sudo yum install -y $package || exit_with_message "$package 安装失败！"
+        else
+            exit_with_message "无法确定系统类型，请手动安装 $package。"
+        fi
     fi
-fi
+}
 
-# 检查是否已安装systemd
-if ! command -v systemctl &> /dev/null; then
-    echo "系统未安装systemd，将尝试根据系统类型安装..."
-    
-    # 检测系统类型，并根据不同类型进行安装
-    if [ -f /etc/debian_version ]; then
-        echo "正在安装systemd（适用于Debian/Ubuntu系统）..."
-        sudo apt update
-        sudo apt install -y systemd
-    elif [ -f /etc/redhat-release ]; then
-        echo "正在安装systemd（适用于Red Hat/CentOS系统）..."
-        sudo yum install -y systemd
+# 生成随机值函数
+generate_random_token() {
+    openssl rand -hex 16  # 32位随机字符串
+}
+
+generate_random_password() {
+    openssl rand -base64 10 | head -c 10  # 10位随机密码
+}
+
+# 配置文件生成函数
+generate_config() {
+    local config_file=$1
+    local component=$2
+
+    info "开始生成 $component 配置文件..."
+    read -p "使用默认配置吗？(y/n): " use_defaults
+
+    if [[ "$use_defaults" =~ ^[Yy]$ ]]; then
+        # 使用默认值
+        bind_addr="0.0.0.0"
+        bind_port="7000"
+        bind_udp_port="7001"
+        token=$(generate_random_token)
+        dashboard_addr="0.0.0.0"
+        dashboard_port="7500"
+        dashboard_pwd=$(generate_random_password)
+        vhost_https_port="8443"
     else
-        echo "无法确定系统类型或不支持当前系统。请手动安装systemd。"
-        exit 1
+        # 手动设置
+        read -p "请输入绑定地址 (默认: 0.0.0.0): " bind_addr
+        bind_addr=${bind_addr:-"0.0.0.0"}
+
+        read -p "请输入绑定端口 (默认: 7000): " bind_port
+        bind_port=${bind_port:-"7000"}
+
+        read -p "请输入绑定 UDP 端口 (默认: 7001): " bind_udp_port
+        bind_udp_port=${bind_udp_port:-"7001"}
+
+        read -p "请输入 Token 密钥 (默认: 随机生成32位字符): " token
+        token=${token:-$(generate_random_token)}
+
+        read -p "请输入 Dashboard 地址 (默认: 0.0.0.0): " dashboard_addr
+        dashboard_addr=${dashboard_addr:-"0.0.0.0"}
+
+        read -p "请输入 Dashboard 端口 (默认: 7500): " dashboard_port
+        dashboard_port=${dashboard_port:-"7500"}
+
+        read -p "请输入 Dashboard 密码 (默认: 随机生成10位字符): " dashboard_pwd
+        dashboard_pwd=${dashboard_pwd:-$(generate_random_password)}
+
+        read -p "请输入 HTTPS 监听端口 (默认: 8443): " vhost_https_port
+        vhost_https_port=${vhost_https_port:-"8443"}
     fi
-fi
 
-# 检查是否已安装 tar
-if ! command -v tar &> /dev/null; then
-    echo "未找到 tar，将尝试根据系统类型安装..."
-
-    # 检测系统类型，并根据不同类型进行安装
-    if [ -f /etc/debian_version ]; then
-        echo "正在安装 tar（适用于Debian/Ubuntu系统）..."
-        sudo apt update
-        sudo apt install -y tar
-    elif [ -f /etc/redhat-release ]; then
-        echo "正在安装 tar（适用于Red Hat/CentOS系统）..."
-        sudo yum install -y tar
-    else
-        echo "无法确定系统类型或不支持当前系统。请手动安装 tar。"
-        exit 1
+    # 写入配置文件
+    if [ -f "$config_file" ]; then
+        warn "配置文件已存在，将创建备份：${config_file}.bak"
+        sudo cp "$config_file" "${config_file}.bak"
     fi
-fi
 
-echo "如已经安装过，请提前做好配置文件的备份"
-# 获取用户选择是安装frpc还是frps
+    sudo tee "$config_file" > /dev/null <<EOL
+[common]
+bind_addr = ${bind_addr}
+bind_port = ${bind_port}
+bind_udp_port = ${bind_udp_port}
+token = ${token}
+dashboard_addr = ${dashboard_addr}
+dashboard_port = ${dashboard_port}
+dashboard_pwd = ${dashboard_pwd}
+vhost_https_port = ${vhost_https_port}
+authentication_timeout = 900
+enable_p2p = true
+max_pool_count = 1000
+heartbeat_timeout = 120
+enable_compression = true
+EOL
+
+    info "配置文件已生成：$config_file"
+    info "Token：$token"
+    info "Dashboard 地址：${dashboard_addr}:${dashboard_port}"
+    info "Dashboard 密码：$dashboard_pwd"
+}
+
+# 安装依赖
+install_dependency "curl"
+install_dependency "tar"
+install_dependency "systemctl"
+
+# 获取用户选择
 echo "请选择要安装的组件："
 echo "1. frpc"
 echo "2. frps"
 read -p "输入数字 (1/2): " choice
 
 case $choice in
-    1)
-        COMPONENT="frpc"
-        ;;
-    2)
-        COMPONENT="frps"
-        ;;
-    *)
-        echo "无效的选择"
-        exit 1
-        ;;
+    1) COMPONENT="frpc" ;;
+    2) COMPONENT="frps" ;;
+    *) exit_with_message "无效的选择！" ;;
 esac
 
-# 定义frp.tar.gz的路径和解压目录
+# 定义目录
 FRP_PACKAGE_PATH="$HOME/frp.tar.gz"
 INSTALL_DIR="/usr/local/bin/$COMPONENT"
 CONFIG_DIR="/etc/$COMPONENT"
 
-# 检查frp.tar.gz是否存在
+# 检查和下载文件
 if [ ! -f "$FRP_PACKAGE_PATH" ]; then
-    echo "frp.tar.gz 不存在，请选择操作："
-    echo "1. 手动下载并放置 frp.tar.gz"
-    echo "2. 自动从网络下载"
-    echo "3. 下载特定版本 v0.50.0 (推荐)"
-    echo "4. 下载特定ARM版本 v0.50.0 "
-    read -p "输入数字 (1/2/3/4): " download_choice
-
-    case $download_choice in
-        1)
-            echo "请手动下载 frp.tar.gz 并放置在 $FRP_PACKAGE_PATH"
-            echo "请自行前往 https://github.com/fatedier/frp/releases/ 中下载 Linux 版本文件，将其改名为 frp.tar.gz 并存放在用户文件夹 $HOME 下"
-            echo "请下载对应的版本，否则可能无法正常使用"
-            exit 1
-            ;;
-        2)
-            echo "正在从网络下载..."
-            echo "本脚本所提供的网络安装（定时自动拉取最新版），安装版本可能落后于 GitHub 版本"
-            curl -o "$FRP_PACKAGE_PATH" "https://yunzeo.github.io/download/frp.tar.gz"
-            ;;
-        3)
-            echo "正在下载特定版本 v0.50.0..."
-            curl -o "$FRP_PACKAGE_PATH" "https://yunzeo.github.io/download/old/frp.tar.gz"
-            ;;
-        4)
-            echo "正在下载特定ARM版本 v0.50.0..."
-            curl -o "$FRP_PACKAGE_PATH" "https://yunzeo.github.io/download/old/arm/frp.tar.gz"
-            ;;
-        *)
-            echo "无效的选择"
-            exit 1
-            ;;
-    esac
+    URL="https://github.com/fatedier/frp/releases/download/v0.50.0/frp_0.50.0_linux_amd64.tar.gz"
+    download_file "$URL" "$FRP_PACKAGE_PATH"
 fi
 
-
-# 创建安装目录和配置目录
+# 创建目录和解压
 sudo mkdir -p "$INSTALL_DIR"
 sudo mkdir -p "$CONFIG_DIR"
-
-# 解压frp.tar.gz并移动其中的文件到安装目录
 tar -xzvf "$FRP_PACKAGE_PATH" --strip-components=1 -C "$INSTALL_DIR"
 
-# 创建示例配置文件
-sudo touch "$CONFIG_DIR/${COMPONENT}.ini"
-# 这里可以根据需要添加默认配置内容
-
-# 检查 tar 解压是否成功
-if [ -f "$INSTALL_DIR/$COMPONENT" ] && [ -f "$CONFIG_DIR/${COMPONENT}.ini" ]; then
-    echo "文件成功解压并移动到安装目录。"
-
-    # 检查是否成功解压出frps和frpc文件
-    if [ -f "$INSTALL_DIR/frps" ] && [ -f "$INSTALL_DIR/frpc" ]; then
-        echo "成功解压出 $COMPONENT 。"
-    else
-        echo "解压过程中出现问题，$COMPONENT 文件未成功解压。请检查并重新运行脚本。"
-        exit 1
-    fi
-else
-    echo "解压过程中出现问题，文件未成功解压。请检查并重新运行脚本。"
-    exit 1
-fi
-
-# 创建systemd服务单元文件
+# 创建 systemd 服务文件
 sudo tee "/etc/systemd/system/${COMPONENT}.service" > /dev/null <<EOL
 [Unit]
 Description=frp $COMPONENT
@@ -151,25 +150,30 @@ After=network.target
 
 [Service]
 Type=simple
-ExecStart="$INSTALL_DIR/$COMPONENT" -c "$CONFIG_DIR/${COMPONENT}.ini"
+ExecStart=$INSTALL_DIR/$COMPONENT -c $CONFIG_DIR/${COMPONENT}.ini
 Restart=on-failure
 
 [Install]
 WantedBy=default.target
 EOL
 
-# 启用并启动frp服务
+# 启动服务
 sudo systemctl enable "${COMPONENT}.service"
 sudo systemctl start "${COMPONENT}.service"
+if ! systemctl is-active --quiet "${COMPONENT}.service"; then
+    exit_with_message "服务启动失败，请检查日志！"
+fi
 
-# 输出安装完成信息和管理服务的命令
-echo "$COMPONENT 安装完成！安装目录：$INSTALL_DIR"
-echo "配置文件目录：$CONFIG_DIR"
-echo "已设置开机自启"
-echo "$COMPONENT 服务已启动，可以使用以下命令管理："
+# 生成配置文件（仅针对 frps）
+if [ "$COMPONENT" == "frps" ]; then
+    generate_config "$CONFIG_DIR/${COMPONENT}.ini" "$COMPONENT"
+fi
+
+# 输出安装完成信息
+info "$COMPONENT 安装完成！安装目录：$INSTALL_DIR"
+info "配置文件目录：$CONFIG_DIR"
+info "使用以下命令管理服务："
 echo "启动服务：sudo systemctl start ${COMPONENT}.service"
 echo "停止服务：sudo systemctl stop ${COMPONENT}.service"
 echo "重启服务：sudo systemctl restart ${COMPONENT}.service"
-echo "开机自启服务：sudo systemctl enable ${COMPONENT}.service"
-echo "停止自启服务：sudo systemctl disable ${COMPONENT}.service"
-echo "查看服务状态：sudo systemctl status ${COMPONENT}.service"
+echo "查看状态：sudo systemctl status ${COMPONENT}.service"
