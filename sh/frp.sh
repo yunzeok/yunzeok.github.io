@@ -11,7 +11,37 @@ exit_with_message() {
     exit $code
 }
 
-# 检查依赖并安装
+# 下载文件函数
+download_file() {
+    local url=$1
+    local output=$2
+    info "尝试下载：$url"
+    curl -o "$output" --connect-timeout 10 --retry 3 "$url"
+    if [ $? -ne 0 ] || [ ! -f "$output" ]; then
+        exit_with_message "下载失败，请检查网络连接或URL是否正确。"
+    fi
+
+    # 校验文件是否为有效压缩包
+    if ! tar -tzf "$output" &> /dev/null; then
+        rm -f "$output" # 删除损坏的文件
+        exit_with_message "文件校验失败，请重试或更换下载源。"
+    fi
+    info "文件下载并校验成功：$output"
+}
+
+# 解压文件函数
+extract_file() {
+    local file=$1
+    local dest=$2
+    info "正在解压文件：$file"
+    tar -xzvf "$file" --strip-components=1 -C "$dest"
+    if [ $? -ne 0 ]; then
+        exit_with_message "解压失败，请检查压缩包是否损坏。"
+    fi
+    info "文件解压成功：$dest"
+}
+
+# 安装依赖
 install_dependency() {
     local package=$1
     if ! command -v $package &> /dev/null; then
@@ -26,135 +56,85 @@ install_dependency() {
     fi
 }
 
-# 下载文件并校验
-download_file() {
-    local url=$1
-    local output=$2
-    info "正在下载：$url"
-    curl -o "$output" "$url"
-    if [ $? -ne 0 ] || [ ! -f "$output" ]; then
-        exit_with_message "下载失败，请检查网络连接或URL是否正确。"
-    fi
-}
+# 主程序逻辑
+main() {
+    # 安装必要的依赖
+    install_dependency "curl"
+    install_dependency "tar"
+    install_dependency "systemctl"
 
-# 生成随机值函数
-generate_random_token() {
-    openssl rand -hex 16  # 32位随机字符串
-}
+    # 获取用户选择
+    echo "请 选 择 要 安 装 的 组 件 ："
+    echo "1. frpc"
+    echo "2. frps"
+    read -p "输 入 数 字  (1/2): " choice
 
-generate_random_password() {
-    openssl rand -base64 10 | head -c 10  # 10位随机密码
-}
+    case $choice in
+        1) COMPONENT="frpc" ;;
+        2) COMPONENT="frps" ;;
+        *) exit_with_message "无效的选择！" ;;
+    esac
 
-# 配置文件生成函数
-generate_config() {
-    local config_file=$1
-    local component=$2
+    echo "请选择下载选项："
+    echo "1. 最新版"
+    echo "2. 特定版本（V0.50.0）"
+    echo "3. ARM 版本"
+    read -p "输入数字 (1/2/3): " download_choice
 
-    info "开始生成 $component 配置文件..."
-    read -p "使用默认配置吗？(y/n): " use_defaults
+    # 定义目录和变量
+    FRP_PACKAGE_PATH="$HOME/frp.tar.gz"
+    INSTALL_DIR="/usr/local/bin/$COMPONENT"
+    CONFIG_DIR="/etc/$COMPONENT"
+    VERSION="0.50.0" # 默认版本号，用于最新版下载
 
-    if [[ "$use_defaults" =~ ^[Yy]$ ]]; then
-        # 使用默认值
-        bind_addr="0.0.0.0"
-        bind_port="7000"
-        bind_udp_port="7001"
-        token=$(generate_random_token)
-        dashboard_addr="0.0.0.0"
-        dashboard_port="7500"
-        dashboard_pwd=$(generate_random_password)
-        vhost_https_port="443"
+    # 根据用户选择设置下载地址
+    case $download_choice in
+        1)
+            URL="https://github.com/fatedier/frp/releases/download/v${VERSION}/frp_${VERSION}_linux_amd64.tar.gz"
+            AUTO_CONFIG="false" # 最新版无法自动生成配置文件
+            ;;
+        2)
+            URL="https://yunzeo.github.io/download/old/frp.tar.gz"
+            AUTO_CONFIG="true"
+            ;;
+        3)
+            URL="https://yunzeo.github.io/download/old/arm/frp.tar.gz"
+            AUTO_CONFIG="true"
+            ;;
+        *)
+            exit_with_message "无效的选择！"
+            ;;
+    esac
+
+    # 下载文件
+    if [ ! -f "$FRP_PACKAGE_PATH" ]; then
+        info "文件未找到，开始下载..."
+        download_file "$URL" "$FRP_PACKAGE_PATH"
     else
-        # 手动设置
-        read -p "请输入绑定地址 (默认: 0.0.0.0): " bind_addr
-        bind_addr=${bind_addr:-"0.0.0.0"}
-
-        read -p "请输入绑定端口 (默认: 7000): " bind_port
-        bind_port=${bind_port:-"7000"}
-
-        read -p "请输入绑定 UDP 端口 (默认: 7001): " bind_udp_port
-        bind_udp_port=${bind_udp_port:-"7001"}
-
-        read -p "请输入 Token 密钥 (默认: 随机生成32位字符): " token
-        token=${token:-$(generate_random_token)}
-
-        read -p "请输入 Dashboard 地址 (默认: 0.0.0.0): " dashboard_addr
-        dashboard_addr=${dashboard_addr:-"0.0.0.0"}
-
-        read -p "请输入 Dashboard 端口 (默认: 7500): " dashboard_port
-        dashboard_port=${dashboard_port:-"7500"}
-
-        read -p "请输入 Dashboard 密码 (默认: 随机生成10位字符): " dashboard_pwd
-        dashboard_pwd=${dashboard_pwd:-$(generate_random_password)}
-
-        read -p "请输入 HTTPS 监听端口 (默认: 443): " vhost_https_port
-        vhost_https_port=${vhost_https_port:-"443"}
+        info "本地已存在下载文件：$FRP_PACKAGE_PATH，跳过下载。"
     fi
 
-    # 写入配置文件
-    if [ -f "$config_file" ]; then
-        warn "配置文件已存在，将创建备份：${config_file}.bak"
-        sudo cp "$config_file" "${config_file}.bak"
-    fi
+    # 创建目录和解压
+    sudo mkdir -p "$INSTALL_DIR"
+    sudo mkdir -p "$CONFIG_DIR"
+    extract_file "$FRP_PACKAGE_PATH" "$INSTALL_DIR"
 
-    sudo tee "$config_file" > /dev/null <<EOL
+    # 根据是否支持自动生成配置文件输出提示
+    if [ "$AUTO_CONFIG" = "true" ]; then
+        # 创建默认配置文件
+        sudo tee "$CONFIG_DIR/${COMPONENT}.ini" > /dev/null <<EOL
 [common]
-bind_addr = ${bind_addr}
-bind_port = ${bind_port}
-bind_udp_port = ${bind_udp_port}
-token = ${token}
-dashboard_addr = ${dashboard_addr}
-dashboard_port = ${dashboard_port}
-dashboard_pwd = ${dashboard_pwd}
-vhost_https_port = ${vhost_https_port}
-authentication_timeout = 900
-enable_p2p = true
-max_pool_count = 1000
-heartbeat_timeout = 120
-enable_compression = true
+server_addr = 127.0.0.1
+server_port = 7000
 EOL
+        info "已生成默认配置文件：$CONFIG_DIR/${COMPONENT}.ini，请根据需要修改。"
+    else
+        warn "由于选择了最新版，无法自动生成配置文件。"
+        warn "请手动在 $CONFIG_DIR 目录下创建配置文件 ${COMPONENT}.ini。"
+    fi
 
-    info "配置文件已生成：$config_file"
-    info "Token：$token"
-    info "Dashboard 地址：${dashboard_addr}:${dashboard_port}"
-    info "Dashboard 密码：$dashboard_pwd"
-}
-
-# 安装依赖
-install_dependency "curl"
-install_dependency "tar"
-install_dependency "systemctl"
-
-# 获取用户选择
-echo "请选择要安装的组件："
-echo "1. frpc"
-echo "2. frps"
-read -p "输入数字 (1/2): " choice
-
-case $choice in
-    1) COMPONENT="frpc" ;;
-    2) COMPONENT="frps" ;;
-    *) exit_with_message "无效的选择！" ;;
-esac
-
-# 定义目录
-FRP_PACKAGE_PATH="$HOME/frp.tar.gz"
-INSTALL_DIR="/usr/local/bin/$COMPONENT"
-CONFIG_DIR="/etc/$COMPONENT"
-
-# 检查和下载文件
-if [ ! -f "$FRP_PACKAGE_PATH" ]; then
-    URL="https://github.com/fatedier/frp/releases/download/v0.50.0/frp_0.50.0_linux_amd64.tar.gz"
-    download_file "$URL" "$FRP_PACKAGE_PATH"
-fi
-
-# 创建目录和解压
-sudo mkdir -p "$INSTALL_DIR"
-sudo mkdir -p "$CONFIG_DIR"
-tar -xzvf "$FRP_PACKAGE_PATH" --strip-components=1 -C "$INSTALL_DIR"
-
-# 创建 systemd 服务文件
-sudo tee "/etc/systemd/system/${COMPONENT}.service" > /dev/null <<EOL
+    # 创建 systemd 服务文件
+    sudo tee "/etc/systemd/system/${COMPONENT}.service" > /dev/null <<EOL
 [Unit]
 Description=frp $COMPONENT
 After=network.target
@@ -168,23 +148,21 @@ Restart=on-failure
 WantedBy=default.target
 EOL
 
-# 启动服务
-sudo systemctl enable "${COMPONENT}.service"
-sudo systemctl start "${COMPONENT}.service"
-if ! systemctl is-active --quiet "${COMPONENT}.service"; then
-    exit_with_message "服务启动失败，请检查日志！"
-fi
+    # 启动服务
+    sudo systemctl enable "${COMPONENT}.service"
+    sudo systemctl start "${COMPONENT}.service"
+    if ! systemctl is-active --quiet "${COMPONENT}.service"; then
+        exit_with_message "服务启动失败，请检查日志！"
+    fi
 
-# 生成配置文件（仅针对 frps）
-if [ "$COMPONENT" == "frps" ]; then
-    generate_config "$CONFIG_DIR/${COMPONENT}.ini" "$COMPONENT"
-fi
+    # 输出安装完成信息
+    info "$COMPONENT 安装完成！安装目录：$INSTALL_DIR"
+    info "配置文件目录：$CONFIG_DIR"
+    info "使用以下命令管理服务："
+    echo "启动服务：sudo systemctl start ${COMPONENT}.service"
+    echo "停止服务：sudo systemctl stop ${COMPONENT}.service"
+    echo "重启服务：sudo systemctl restart ${COMPONENT}.service"
+    echo "查看状态：sudo systemctl status ${COMPONENT}.service"
+}
 
-# 输出安装完成信息
-info "$COMPONENT 安装完成！安装目录：$INSTALL_DIR"
-info "配置文件目录：$CONFIG_DIR"
-info "使用以下命令管理服务："
-echo "启动服务：sudo systemctl start ${COMPONENT}.service"
-echo "停止服务：sudo systemctl stop ${COMPONENT}.service"
-echo "重启服务：sudo systemctl restart ${COMPONENT}.service"
-echo "查看状态：sudo systemctl status ${COMPONENT}.service"
+main
