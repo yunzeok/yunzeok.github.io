@@ -36,6 +36,7 @@ services:
     volumes:
       - /var/lib:/var/lib
       - /dev/net/tun:/dev/net/tun
+      - /var/run/tailscale:/var/run/tailscale
     cap_add:
       - NET_ADMIN
       - NET_RAW
