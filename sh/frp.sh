@@ -1,5 +1,5 @@
 #!/bin/bash
-
+# -*- coding: utf-8 -*-
 # 输出带颜色的提示信息
 info() { echo -e "\033[1;32m[INFO]\033[0m $1"; }
 warn() { echo -e "\033[1;33m[WARN]\033[0m $1"; }
@@ -11,158 +11,170 @@ exit_with_message() {
     exit $code
 }
 
-# 下载文件函数
-download_file() {
-    local url=$1
-    local output=$2
-    info "尝试下载：$url"
-    curl -o "$output" --connect-timeout 10 --retry 3 "$url"
-    if [ $? -ne 0 ] || [ ! -f "$output" ]; then
-        exit_with_message "下载失败，请检查网络连接或URL是否正确。"
-    fi
-
-    # 校验文件是否为有效压缩包
-    if ! tar -tzf "$output" &> /dev/null; then
-        rm -f "$output" # 删除损坏的文件
-        exit_with_message "文件校验失败，请重试或更换下载源。"
-    fi
-    info "文件下载并校验成功：$output"
-}
-
-# 解压文件函数
-extract_file() {
-    local file=$1
-    local dest=$2
-    info "正在解压文件：$file"
-    tar -xzvf "$file" --strip-components=1 -C "$dest"
-    if [ $? -ne 0 ]; then
-        exit_with_message "解压失败，请检查压缩包是否损坏。"
-    fi
-    info "文件解压成功：$dest"
-}
-
-# 安装依赖
+# 安装缺失的依赖
 install_dependency() {
     local package=$1
-    if ! command -v $package &> /dev/null; then
-        info "未找到 $package，将尝试安装..."
+    if ! command -v "$package" &> /dev/null; then
+        info "安装缺失依赖: $package"
         if [ -f /etc/debian_version ]; then
-            sudo apt update && sudo apt install -y $package || exit_with_message "$package 安装失败！"
+            sudo apt update && sudo apt install -y "$package" || exit_with_message "$package 安装失败！"
         elif [ -f /etc/redhat-release ]; then
-            sudo yum install -y $package || exit_with_message "$package 安装失败！"
+            sudo yum install -y "$package" || exit_with_message "$package 安装失败！"
         else
-            exit_with_message "无法确定系统类型，请手动安装 $package。"
+            exit_with_message "无法识别系统，请手动安装 $package。"
         fi
     fi
 }
 
-# 主程序逻辑
-main() {
-    # 安装必要的依赖
-    install_dependency "curl"
-    install_dependency "tar"
-    install_dependency "systemctl"
+# 检查系统环境
+check_environment() {
+    if [ -f /etc/debian_version ]; then
+        info "检测到 Debian/Ubuntu 系统"
+    elif [ -f /etc/redhat-release ]; then
+        info "检测到 RedHat 系统"
+    else
+        exit_with_message "无法识别的系统类型，请检查支持情况。"
+    fi
 
-    # 获取用户选择
-    echo "请 选 择 要 安 装 的 组 件 ："
-    echo "1. frpc"
-    echo "2. frps"
-    read -p "输 入 数 字  (1/2): " choice
-
-    case $choice in
-        1) COMPONENT="frpc" ;;
-        2) COMPONENT="frps" ;;
-        *) exit_with_message "无效的选择！" ;;
-    esac
-
-    echo "请选择下载选项："
-    echo "1. 最新版"
-    echo "2. 特定版本（V0.50.0）"
-    echo "3. ARM 版本"
-    read -p "输入数字 (1/2/3): " download_choice
-
-    # 定义目录和变量
-    FRP_PACKAGE_PATH="$HOME/frp.tar.gz"
-    INSTALL_DIR="/usr/local/bin/$COMPONENT"
-    CONFIG_DIR="/etc/$COMPONENT"
-    VERSION="0.50.0" # 默认版本号，用于最新版下载
-
-    # 根据用户选择设置下载地址
-    case $download_choice in
-        1)
-            URL="https://github.com/fatedier/frp/releases/download/v${VERSION}/frp_${VERSION}_linux_amd64.tar.gz"
-            AUTO_CONFIG="false" # 最新版无法自动生成配置文件
+    ARCH=$(uname -m)
+    case "$ARCH" in
+        x86_64)
+            info "检测到 x86 架构"
             ;;
-        2)
-            URL="https://yunzeo.github.io/download/old/frp.tar.gz"
-            AUTO_CONFIG="true"
-            ;;
-        3)
-            URL="https://yunzeo.github.io/download/old/arm/frp.tar.gz"
-            AUTO_CONFIG="true"
+        aarch64)
+            info "检测到 ARM 架构"
             ;;
         *)
-            exit_with_message "无效的选择！"
+            exit_with_message "不支持的架构类型: $ARCH"
             ;;
     esac
 
-    # 下载文件
-    if [ ! -f "$FRP_PACKAGE_PATH" ]; then
-        info "文件未找到，开始下载..."
-        download_file "$URL" "$FRP_PACKAGE_PATH"
-    else
-        info "本地已存在下载文件：$FRP_PACKAGE_PATH，跳过下载。"
-    fi
+    install_dependency "curl"
+    install_dependency "tar"
+}
 
-    # 创建目录和解压
-    sudo mkdir -p "$INSTALL_DIR"
-    sudo mkdir -p "$CONFIG_DIR"
-    extract_file "$FRP_PACKAGE_PATH" "$INSTALL_DIR"
+# 下载并解压 FRP
+download_frp_package() {
+    local component=$1
+    local version="0.51.3"
+    local arch=$(uname -m)
+    local primary_url=""
+    local backup_url="https://min.zeihaoxue.cn/public/git/file"
+    local output_path="./frp_package.tar.gz"
+    local temp_dir="./frp_temp"
+    local install_dir="/usr/local/frp_$component"
 
-    # 根据是否支持自动生成配置文件输出提示
-    if [ "$AUTO_CONFIG" = "true" ]; then
-        # 创建默认配置文件
-        sudo tee "$CONFIG_DIR/${COMPONENT}.ini" > /dev/null <<EOL
-[common]
-server_addr = 127.0.0.1
-server_port = 7000
-EOL
-        info "已生成默认配置文件：$CONFIG_DIR/${COMPONENT}.ini，请根据需要修改。"
-    else
-        warn "由于选择了最新版，无法自动生成配置文件。"
-        warn "请手动在 $CONFIG_DIR 目录下创建配置文件 ${COMPONENT}.ini。"
-    fi
+    case "$arch" in
+        x86_64)
+            primary_url="https://github.com/fatedier/frp/releases/download/v${version}/frp_${version}_linux_amd64.tar.gz"
+            backup_url="${backup_url}/frp_${version}_linux_amd64.tar.gz"
+            ;;
+        aarch64)
+            primary_url="https://github.com/fatedier/frp/releases/download/v${version}/frp_${version}_linux_arm64.tar.gz"
+            backup_url="${backup_url}/frp_${version}_linux_arm64.tar.gz"
+            ;;
+        *)
+            exit_with_message "不支持的架构类型: $arch"
+            ;;
+    esac
 
-    # 创建 systemd 服务文件
-    sudo tee "/etc/systemd/system/${COMPONENT}.service" > /dev/null <<EOL
+    info "尝试从 GitHub 下载 $component..."
+    curl -Lo "$output_path" "$primary_url" || {
+        warn "从 GitHub 下载失败，尝试备用地址..."
+        curl -Lo "$output_path" "$backup_url" || exit_with_message "备用地址下载失败！"
+    }
+
+    info "下载完成，准备解压到临时目录：$temp_dir"
+    mkdir -p "$temp_dir" || exit_with_message "创建临时目录失败：$temp_dir"
+    tar -xzvf "$output_path" -C "$temp_dir" || exit_with_message "解压失败，请检查文件完整性！"
+
+    info "准备移动 $component 文件到目标目录：$install_dir"
+    sudo mkdir -p "$install_dir" || exit_with_message "创建目标目录失败：$install_dir"
+    sudo mv "$temp_dir"/*/* "$install_dir" || exit_with_message "移动文件失败！"
+    sudo chmod +x "$install_dir/$component" || exit_with_message "设置可执行权限失败！"
+
+    info "$component 下载并解压完成！文件位于：$install_dir"
+    rm -rf "$temp_dir" "$output_path"
+}
+
+# 创建 systemd 服务文件
+create_systemd_service() {
+    local component=$1          # 服务名称，例如 "frps" 或 "frpc"
+    local install_dir=$2        # 可执行文件的安装目录
+    local config_file=$3        # 配置文件路径
+    local description=${4:-"FRP Service"}  # 服务描述，默认为 "FRP Service"
+
+    info "创建 systemd 服务文件..."
+    sudo tee "/etc/systemd/system/${component}.service" > /dev/null <<EOL
 [Unit]
-Description=frp $COMPONENT
+Description=$description
 After=network.target
 
 [Service]
 Type=simple
-ExecStart=$INSTALL_DIR/$COMPONENT -c $CONFIG_DIR/${COMPONENT}.ini
+ExecStart=$install_dir/$component -c $config_file
 Restart=on-failure
 
 [Install]
-WantedBy=default.target
+WantedBy=multi-user.target
 EOL
 
-    # 启动服务
-    sudo systemctl enable "${COMPONENT}.service"
-    sudo systemctl start "${COMPONENT}.service"
-    if ! systemctl is-active --quiet "${COMPONENT}.service"; then
-        exit_with_message "服务启动失败，请检查日志！"
-    fi
+    info "是否启用并启动服务？"
+    read -p "请输入 [y/yes] 启用并启动服务，其他值跳过启动步骤：" choice < /dev/tty
+    choice=${choice:-n}
 
-    # 输出安装完成信息
-    info "$COMPONENT 安装完成！安装目录：$INSTALL_DIR"
-    info "配置文件目录：$CONFIG_DIR"
-    info "使用以下命令管理服务："
-    echo "启动服务：sudo systemctl start ${COMPONENT}.service"
-    echo "停止服务：sudo systemctl stop ${COMPONENT}.service"
-    echo "重启服务：sudo systemctl restart ${COMPONENT}.service"
-    echo "查看状态：sudo systemctl status ${COMPONENT}.service"
+    if [[ "$choice" =~ ^(y|yes)$ ]]; then
+        info "启用并启动服务..."
+        sudo systemctl enable "${component}.service"
+        sudo systemctl start "${component}.service"
+
+        if systemctl is-active --quiet "${component}.service"; then
+            info "服务启动成功！"
+            echo "当前服务状态："
+            sudo systemctl status "${component}.service" --no-pager
+        else
+            error "服务启动失败！请检查日志。"
+            echo "查看日志：sudo journalctl -u ${component}.service"
+        fi
+    else
+        warn "跳过服务启动步骤，您可以稍后手动启动服务。"
+        echo "如需启动服务，请运行以下命令："
+        echo "sudo systemctl start ${component}.service"
+    fi
+}
+
+# 主程序入口
+main() {
+    info "选择组件类型："
+
+    # 循环直到用户输入有效选项
+    while true; do
+        echo "1. 下载并配置 frps（服务端）"
+        echo "2. 仅下载 frpc（客户端）"
+        read -p "请输入选项 [1/2]：" choice < /dev/tty
+
+        case "$choice" in
+            1)
+                info "选择了 frps 服务端..."
+                check_environment
+                download_frp_package "frps"
+                create_systemd_service "frps" "/usr/local/frp_frps" "/usr/frp/frps.ini" "FRP Server"
+                info "FRPS 部署完成！"
+                break
+                ;;
+            2)
+                info "选择了 frpc 客户端..."
+                check_environment
+                download_frp_package "frpc"
+                create_systemd_service "frpc" "/usr/local/frp_frpc" "/usr/local/frpc.ini" "FRP Client"
+                info "FRPC 部署完成！"
+                break
+                ;;
+            *)
+                warn "无效的选项，请重新输入！"
+                ;;
+        esac
+    done
 }
 
 main
