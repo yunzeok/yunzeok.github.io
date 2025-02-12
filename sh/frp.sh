@@ -59,7 +59,7 @@ download_frp_package() {
     local version="0.51.3"
     local arch=$(uname -m)
     local primary_url=""
-    local backup_url="https://min.zeihaoxue.cn/public/git/file"
+    local backup_url="https://co.yunzeji.cn/public/git/file"
     local output_path="./frp_package.tar.gz"
     local temp_dir="./frp_temp"
     local install_dir="/usr/local/frp_$component"
@@ -96,7 +96,87 @@ download_frp_package() {
     info "$component 下载并解压完成！文件位于：$install_dir"
     rm -rf "$temp_dir" "$output_path"
 }
+# 生成默认配置文件
+generate_frpc_config() {
+    local config_file="/usr/local/frp_frpc/frpc.ini"
+    local server_ip
+    local server_port
+    local token
+    local protocol
 
+    # 确保目录存在
+    mkdir -p /usr/local/frp_frpc
+
+    info "请提供 FRP 服务器信息（此操作将清空旧配置）："
+    read -p "请输入服务器 IP 地址：" server_ip < /dev/tty
+    read -p "请输入服务器端口：" server_port < /dev/tty
+    read -p "请输入连接 Token：" token < /dev/tty
+    read -p "请选择协议（tcp/kcp/quic，默认 tcp）：" protocol < /dev/tty
+    protocol=${protocol:-tcp}  # 默认使用 TCP
+
+    # **清空并写入新的 frpc.ini 配置**
+    sudo tee "$config_file" > /dev/null <<EOL
+[common]
+server_addr = $server_ip
+server_port = $server_port
+token = $token
+protocol = $protocol
+EOL
+
+    info "默认配置文件已生成: $config_file"
+    echo "----------------------"
+    cat "$config_file"
+    echo "----------------------"
+}
+# 添加客户端映射
+add_frpc_mapping() {
+    local config_file="/usr/local/frp_frpc/frpc.ini"
+
+    while true; do
+        info "添加 FRPC 客户端映射配置"
+        read -p "请输入映射名称（如 openid）：" mapping_name < /dev/tty
+        read -p "请输入映射类型（tcp/udp/http/https，默认 tcp）：" mapping_type < /dev/tty
+        mapping_type=${mapping_type:-tcp}
+        read -p "请输入本地 IP（默认 127.0.0.1）：" local_ip < /dev/tty
+        local_ip=${local_ip:-127.0.0.1}
+        read -p "请输入本地端口：" local_port < /dev/tty
+        read -p "请输入远程端口：" remote_port < /dev/tty
+
+        cat >> "$config_file" <<EOL
+
+[$mapping_name]
+type = $mapping_type
+local_ip = $local_ip
+local_port = $local_port
+remote_port = $remote_port
+EOL
+
+        info "映射 [$mapping_name] 添加成功！"
+
+        read -p "是否继续添加映射？(y/n)：" choice < /dev/tty
+        if [[ "$choice" =~ ^(n|N)$ ]]; then
+            break
+        fi
+    done
+
+    # **询问是否要重启 frpc 使映射生效**
+    read -p "是否立即重启 FRPC 以使映射生效？(y/n)：" restart_choice < /dev/tty
+    if [[ "$restart_choice" =~ ^(y|Y)$ ]]; then
+        info "正在重启 FRPC..."
+        sudo systemctl restart frpc
+        sleep 2
+        if systemctl is-active --quiet frpc; then
+            info "FRPC 重启成功！"
+            sudo systemctl status frpc --no-pager
+        else
+            error "FRPC 重启失败，请检查日志！"
+            echo "查看日志：sudo journalctl -u frpc --no-pager"
+        fi
+    else
+        warn "请手动重启 FRPC 以使新映射生效："
+        echo "sudo systemctl restart frpc"
+    fi
+}
 # 创建 systemd 服务文件
 create_systemd_service() {
     local component=$1          # 服务名称，例如 "frps" 或 "frpc"
@@ -105,6 +185,12 @@ create_systemd_service() {
     local description=${4:-"FRP Service"}  # 服务描述，默认为 "FRP Service"
 
     info "创建 systemd 服务文件..."
+	 # 如果是 frpc，先生成 frpc.ini 配置
+    if [[ "$component" == "frpc" ]]; then
+        info "检测到 FRPC 客户端，先生成 frpc.ini 配置..."
+        generate_frpc_config
+    fi
+	
     sudo tee "/etc/systemd/system/${component}.service" > /dev/null <<EOL
 [Unit]
 Description=$description
@@ -113,8 +199,9 @@ After=network.target
 [Service]
 Type=simple
 ExecStart=$install_dir/$component -c $config_file
-Restart=on-failure
-
+Restart=always
+RestartSec=5
+LimitNOFILE=1048576
 [Install]
 WantedBy=multi-user.target
 EOL
@@ -151,14 +238,15 @@ main() {
     while true; do
         echo "1. 下载并配置 frps（服务端）"
         echo "2. 仅下载 frpc（客户端）"
-        read -p "请输入选项 [1/2]：" choice < /dev/tty
+		echo "3. 添加 FRPC 客户端映射"
+        read -p "请输入选项 [1/2/3]：" choice < /dev/tty
 
         case "$choice" in
             1)
                 info "选择了 frps 服务端..."
                 check_environment
                 download_frp_package "frps"
-                create_systemd_service "frps" "/usr/local/frp_frps" "/usr/frp/frps.ini" "FRP Server"
+                create_systemd_service "frps" "/usr/local/frp_frps" "/usr/frp_frps/frps.ini" "FRP Server"
                 info "FRPS 部署完成！"
                 break
                 ;;
@@ -166,10 +254,16 @@ main() {
                 info "选择了 frpc 客户端..."
                 check_environment
                 download_frp_package "frpc"
-                create_systemd_service "frpc" "/usr/local/frp_frpc" "/usr/local/frpc.ini" "FRP Client"
+                create_systemd_service "frpc" "/usr/local/frp_frpc" "/usr/local/frp_frpc/frpc.ini" "FRP Client"
                 info "FRPC 部署完成！"
                 break
                 ;;
+		    3)
+                info "选择了添加 FRPC 客户端映射..."
+                add_frpc_mapping
+                info "客户端映射添加完成！"
+                break
+                ;;		
             *)
                 warn "无效的选项，请重新输入！"
                 ;;
