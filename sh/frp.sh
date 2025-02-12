@@ -55,7 +55,7 @@ check_environment() {
 
 # 下载并解压 FRP
 download_frp_package() {
-    local component=$1
+     local component=$1
     local version="0.51.3"
     local arch=$(uname -m)
     local primary_url=""
@@ -63,7 +63,16 @@ download_frp_package() {
     local output_path="./frp_package.tar.gz"
     local temp_dir="./frp_temp"
     local install_dir="/usr/local/frp_$component"
+    local bin_path="$install_dir/$component"
 
+
+	
+	# 检查是否已安装
+    if [[ -f "$bin_path" && -x "$bin_path" ]]; then
+        info "$component 已安装，跳过下载。"
+        return 0
+    fi
+	# 选择下载地址
     case "$arch" in
         x86_64)
             primary_url="https://github.com/fatedier/frp/releases/download/v${version}/frp_${version}_linux_amd64.tar.gz"
@@ -232,21 +241,28 @@ EOL
 
 # 主程序入口
 main() {
-    info "选择组件类型："
+    info "选择组件操作："
 
-    # 循环直到用户输入有效选项
     while true; do
         echo "1. 下载并配置 frps（服务端）"
         echo "2. 仅下载 frpc（客户端）"
-		echo "3. 添加 FRPC 客户端映射"
-        read -p "请输入选项 [1/2/3]：" choice < /dev/tty
+        echo "3. 添加 FRPC 客户端映射"
+        echo "4. 启动 FRPS（服务端）"
+		echo "5. 停止 FRPS（服务端）"
+		echo "6. 重启 FRPS（服务端）"
+		echo "7. 查看 FRPS（服务端）状态"
+        echo "8. 启动 FRPC（客户端）"
+        echo "9. 停止 FRPC（客户端）"
+        echo "10. 重启 FRPC（客户端）"
+        echo "11. 查看 FRPC（客户端）状态"
+        read -p "请输入选项 [1-11]：" choice < /dev/tty
 
         case "$choice" in
             1)
                 info "选择了 frps 服务端..."
                 check_environment
                 download_frp_package "frps"
-                create_systemd_service "frps" "/usr/local/frp_frps" "/usr/frp_frps/frps.ini" "FRP Server"
+                create_systemd_service "frps" "/usr/local/frp_frps" "/usr/local/frp_frps/frps.ini" "FRP Server"
                 info "FRPS 部署完成！"
                 break
                 ;;
@@ -258,12 +274,54 @@ main() {
                 info "FRPC 部署完成！"
                 break
                 ;;
-		    3)
+            3)
                 info "选择了添加 FRPC 客户端映射..."
                 add_frpc_mapping
                 info "客户端映射添加完成！"
                 break
                 ;;		
+            4)
+                sudo systemctl start frps.service
+                info "FRPS（服务端）已启动！"
+                break
+                ;;
+		    5)
+                sudo systemctl stop frps.service
+                info "FRPS（服务端）已停止！"
+                break
+                ;;		
+			6)
+                sudo systemctl restart frps.service
+                info "FRPS（服务端）已重启！"
+                break
+                ;;	
+		   7)
+                sudo systemctl status frps.service --no-pager
+                break
+                ;;		
+				
+            8)
+                sudo systemctl start frpc.service
+                info "FRPC（客户端）已启动！"
+                break
+                ;;
+          
+            9)
+                sudo systemctl stop frpc.service
+                info "FRPC（客户端）已停止！"
+                break
+                ;;
+           
+            10)
+                sudo systemctl restart frpc.service
+                info "FRPC（客户端）已重启！"
+                break
+                ;;
+           
+            11)
+                sudo systemctl status frpc.service --no-pager
+                break
+                ;;
             *)
                 warn "无效的选项，请重新输入！"
                 ;;
