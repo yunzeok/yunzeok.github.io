@@ -105,6 +105,57 @@ download_frp_package() {
     info "$component 下载并解压完成！文件位于：$install_dir"
     rm -rf "$temp_dir" "$output_path"
 }
+# 生成随机 Token 的函数
+generate_token() {
+    head -c 16 /dev/urandom | base64 | tr -d '=' | tr '+/' '-_'
+}
+generate_password() {
+    head -c 32 /dev/urandom | base64 | tr -dc 'a-zA-Z0-9!@#$%^&*()_-' | head -c 18
+}
+generate_frps_config() {
+    local config_file="/usr/local/frp_frps/frps.ini"
+    local bind_ip
+    local bind_port
+    local token
+    local dashboard_port
+    local dashboard_user
+    local dashboard_pwd
+
+    # 创建配置目录
+    mkdir -p /usr/local/frp_frps
+
+    info "请配置 FRP 服务端参数（将覆盖旧配置）："
+    read -p "绑定 IP 地址（默认 0.0.0.0）：" bind_ip < /dev/tty
+    bind_ip=${bind_ip:-0.0.0.0}
+    read -p "服务监听端口（默认 10000）：" bind_port < /dev/tty
+    bind_port=${bind_port:-10000}
+   # 读取用户输入或生成随机值
+   read -p "认证 Token（留空自动生成）: " token < /dev/tty
+   token="${token:-$(generate_token)}"
+    read -p "管理面板端口（默认 7575）：" dashboard_port < /dev/tty
+    dashboard_port=${dashboard_port:-7575}
+    read -p "管理用户名（默认 admin）：" dashboard_user < /dev/tty
+    dashboard_user=${dashboard_user:-admin}
+    read -p "管理密码（留空自动生成））：" dashboard_pwd < /dev/tty
+    dashboard_pwd=${dashboard_pwd:-$(generate_password)}
+
+    # 清空并写入新配置
+    sudo tee "$config_file" > /dev/null <<EOL
+[common]
+bind_addr = $bind_ip
+bind_port = $bind_port
+token = $token
+dashboard_port = $dashboard_port
+dashboard_user = $dashboard_user
+dashboard_pwd = $dashboard_pwd
+EOL
+
+    info "服务端配置文件已生成: $config_file"
+    echo "----------------------"
+    cat "$config_file"
+    echo "----------------------"
+}
+
 # 生成默认配置文件
 generate_frpc_config() {
     local config_file="/usr/local/frp_frpc/frpc.ini"
@@ -261,7 +312,9 @@ main() {
             1)
                 info "选择了 frps 服务端..."
                 check_environment
+
                 download_frp_package "frps"
+                generate_frps_config
                 create_systemd_service "frps" "/usr/local/frp_frps" "/usr/local/frp_frps/frps.ini" "FRP Server"
                 info "FRPS 部署完成！"
                 break
