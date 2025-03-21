@@ -53,7 +53,7 @@ services:
       - TS_SOCKS5_SERVER=
       - TS_STATE_DIR=/var/lib/tailscale
       - TS_USERSPACE=true
-      - TS_EXTRA_ARGS=-advertise-exit-node
+      - TS_EXTRA_ARGS=--advertise-exit-node
     image: tailscale/tailscale:latest
 EOF
 
