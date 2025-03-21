@@ -26,7 +26,6 @@ read -p "请输入 Tailscale 授权密钥 (TS_AUTHKEY): " TS_AUTHKEY
 
 # 创建 docker-compose.yml 文件
 cat <<EOF > /root/tailscale/docker-compose.yml
-version: '3.8'
 
 services:
   tailscale:
