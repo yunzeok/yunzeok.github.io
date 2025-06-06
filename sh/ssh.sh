@@ -65,19 +65,18 @@ backup_file() {
 
 [[ -f "$SSH_CONFIG_FILE" ]] && backup_file "$SSH_CONFIG_FILE"
 
-# 配置SSH
+# 配置SSH - 使用不同的分隔符避免冲突
 update_ssh_config() {
     local key=$1
     local value=$2
-    local comment="^#\s*${key}"
-    local setting="^${key}"
     
-    if grep -q "$setting" "$SSH_CONFIG_FILE"; then
-        sed -i "s/$setting.*/${key} ${value}/" "$SSH_CONFIG_FILE"
-    elif grep -q "$comment" "$SSH_CONFIG_FILE"; then
-        sed -i "s/$comment.*/${key} ${value}/" "$SSH_CONFIG_FILE"
+    # 使用 | 作为分隔符避免路径中的 / 干扰
+    if grep -q "^$key" "$SSH_CONFIG_FILE"; then
+        sed -i "s|^$key.*|$key $value|" "$SSH_CONFIG_FILE"
+    elif grep -q "^#$key" "$SSH_CONFIG_FILE"; then
+        sed -i "s|^#$key.*|$key $value|" "$SSH_CONFIG_FILE"
     else
-        echo "${key} ${value}" >> "$SSH_CONFIG_FILE"
+        echo "$key $value" >> "$SSH_CONFIG_FILE"
     fi
 }
 
@@ -85,7 +84,7 @@ update_ssh_config() {
 update_ssh_config "PubkeyAuthentication" "yes"
 echo "已启用密钥登录"
 
-# 确保公钥文件位置正确
+# 确保公钥文件位置正确 - 使用不同的分隔符避免冲突
 update_ssh_config "AuthorizedKeysFile" ".ssh/authorized_keys"
 
 # 允许root远程登录
@@ -121,21 +120,22 @@ update_ssh_config "ChallengeResponseAuthentication" "no"
 update_ssh_config "PermitEmptyPasswords" "no"
 echo "已配置额外安全选项"
 
-# 重启SSH服务
+# 重启SSH服务 - 简化处理
 restart_ssh() {
-    # 在Debian系列中，服务名称通常是ssh或sshd
-    if systemctl status sshd &>/dev/null; then
-        systemctl restart sshd
-        echo "SSH服务 (sshd) 已重启"
-        return 0
-    elif systemctl status ssh &>/dev/null; then
-        systemctl restart ssh
-        echo "SSH服务 (ssh) 已重启"
-        return 0
-    else
-        # 尝试传统service命令
-        service ssh restart && echo "SSH服务 (ssh) 已重启" && return 0
-        service sshd restart && echo "SSH服务 (sshd) 已重启" && return 0
+    if command -v systemctl >/dev/null; then
+        # 尝试常见服务名称
+        if systemctl restart sshd 2>/dev/null || systemctl restart ssh 2>/dev/null; then
+            echo "SSH服务已重启"
+            return 0
+        fi
+    fi
+    
+    # 尝试传统service命令
+    if command -v service >/dev/null; then
+        if service ssh restart 2>/dev/null || service sshd restart 2>/dev/null; then
+            echo "SSH服务已重启"
+            return 0
+        fi
     fi
     
     # 如果都失败则报错
